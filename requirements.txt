@@ -1,0 +1,8 @@
+# Telegram Bot
+python-telegram-bot==21.*
+
+# HTTP server
+aiohttp==3.*
+
+# .env loader
+python-dotenv==1.*

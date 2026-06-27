@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Jakarta Cafe</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ── LOADING ─────────────────────────────────────────────── -->
+<div id="loading" class="screen active">
+  <div class="loading-inner">
+    <div class="logo">☕</div>
+    <div class="loading-text">Jakarta Cafe</div>
+    <div class="spinner"></div>
+  </div>
+</div>
+
+<!-- ── MENU ────────────────────────────────────────────────── -->
+<div id="screen-menu" class="screen">
+  <div class="topbar">
+    <span class="topbar-title">☕ Jakarta Cafe</span>
+    <button class="icon-btn" id="btn-orders-icon" title="Pesanan saya">📋</button>
+  </div>
+
+  <div id="category-tabs" class="category-tabs"></div>
+
+  <div id="menu-list" class="menu-list"></div>
+
+  <!-- Floating cart button -->
+  <button id="btn-cart" class="cart-fab hidden">
+    🛒 Keranjang · <span id="cart-count">0</span> item
+    <span class="cart-total-fab" id="cart-total-fab"></span>
+  </button>
+</div>
+
+<!-- ── CART ─────────────────────────────────────────────────── -->
+<div id="screen-cart" class="screen">
+  <div class="topbar">
+    <button class="icon-btn back-btn" data-target="screen-menu">← Kembali</button>
+    <span class="topbar-title">Keranjang</span>
+  </div>
+
+  <div id="cart-items" class="cart-list"></div>
+
+  <div class="cart-footer">
+    <div class="voucher-row">
+      <input id="voucher-input" type="text" placeholder="Kode voucher (opsional)" autocapitalize="characters" />
+      <button id="btn-apply-voucher" class="btn-sm">Pakai</button>
+    </div>
+    <div id="voucher-msg" class="voucher-msg"></div>
+
+    <div class="note-row">
+      <textarea id="note-input" placeholder="Catatan untuk dapur (opsional)" rows="2"></textarea>
+    </div>
+
+    <div class="price-summary">
+      <div class="price-row"><span>Subtotal</span><span id="sum-subtotal">Rp 0</span></div>
+      <div class="price-row discount-row hidden" id="discount-row">
+        <span>Diskon</span><span id="sum-discount" class="green">-Rp 0</span>
+      </div>
+      <div class="price-row total-row"><span>Total</span><span id="sum-total">Rp 0</span></div>
+    </div>
+
+    <button id="btn-checkout" class="btn-primary">Pesan Sekarang</button>
+  </div>
+</div>
+
+<!-- ── ORDER SUCCESS ────────────────────────────────────────── -->
+<div id="screen-success" class="screen">
+  <div class="success-inner">
+    <div class="success-icon">✅</div>
+    <h2>Pesanan Masuk!</h2>
+    <p>Order <strong id="success-order-id">#0</strong> sedang menunggu konfirmasi owner.</p>
+    <p class="success-total">Total: <strong id="success-total">Rp 0</strong></p>
+    <button id="btn-back-menu" class="btn-primary">Pesan Lagi</button>
+    <button id="btn-see-orders" class="btn-secondary">Lihat Pesanan Saya</button>
+  </div>
+</div>
+
+<!-- ── ORDERS LIST ──────────────────────────────────────────── -->
+<div id="screen-orders" class="screen">
+  <div class="topbar">
+    <button class="icon-btn back-btn" data-target="screen-menu">← Kembali</button>
+    <span class="topbar-title">Pesanan Saya</span>
+  </div>
+  <div id="orders-list" class="orders-list"></div>
+</div>
+
+<!-- ── ORDER DETAIL ─────────────────────────────────────────── -->
+<div id="screen-order-detail" class="screen">
+  <div class="topbar">
+    <button class="icon-btn back-btn" data-target="screen-orders">← Kembali</button>
+    <span class="topbar-title" id="detail-title">Order #0</span>
+  </div>
+  <div id="order-detail-body" class="order-detail-body"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
