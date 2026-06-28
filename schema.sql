@@ -1,44 +1,52 @@
+-- Semua harga dalam RIEL (integer, ga ada desimal)
+
 CREATE TABLE IF NOT EXISTS menu_items (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT    NOT NULL,
     description TEXT,
-    price       INTEGER NOT NULL,
+    price       INTEGER NOT NULL,          -- riel
     category    TEXT    NOT NULL,
     emoji       TEXT    DEFAULT '☕',
-    available   INTEGER DEFAULT 1
-);
-
-CREATE TABLE IF NOT EXISTS vouchers (
-    code           TEXT    PRIMARY KEY,
-    discount_type  TEXT    NOT NULL CHECK (discount_type IN ('percent', 'flat')),
-    discount_value INTEGER NOT NULL,
-    min_order      INTEGER DEFAULT 0,
-    max_uses       INTEGER DEFAULT NULL,
-    used_count     INTEGER DEFAULT 0,
-    active         INTEGER DEFAULT 1
+    available   INTEGER DEFAULT 1          -- 1=ada, 0=habis
 );
 
 CREATE TABLE IF NOT EXISTS orders (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id      INTEGER NOT NULL,
-    username     TEXT,
-    full_name    TEXT,
-    status       TEXT    NOT NULL DEFAULT 'pending',
-    subtotal     INTEGER NOT NULL,
-    discount     INTEGER DEFAULT 0,
-    total        INTEGER NOT NULL,
-    voucher_code TEXT,
-    note         TEXT,
-    created_at   TEXT    DEFAULT (datetime('now','localtime')),
-    updated_at   TEXT    DEFAULT (datetime('now','localtime'))
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        INTEGER NOT NULL,
+    username       TEXT,
+    full_name      TEXT,
+
+    -- State dapur
+    status         TEXT    NOT NULL DEFAULT 'PRE_CHECK',
+    -- PRE_CHECK | PARTIAL_PENDING | PENDING | CONFIRMED | PREPARING | DONE
+    -- | REJECTED | CANCELLED
+
+    -- Payment (terpisah dari state dapur)
+    payment_status TEXT    NOT NULL DEFAULT 'UNPAID',  -- UNPAID | PAID
+    paid_currency  TEXT,                               -- 'RIEL' | 'USD' (apa yang masuk laci)
+    paid_at        TEXT,                               -- UTC datetime, wajib UTC
+
+    -- Voucher
+    voucher_used   INTEGER DEFAULT 0,      -- 1 = voucher dipakai
+    voucher_value  INTEGER DEFAULT 0,      -- riel yang dipotong voucher (maks 10000)
+
+    -- Harga (GENERATED supaya ga bisa drift manual)
+    subtotal       INTEGER NOT NULL,       -- sum(line_total) sebelum voucher
+    discount       INTEGER GENERATED ALWAYS AS (voucher_value) STORED,
+    total          INTEGER GENERATED ALWAYS AS (subtotal - voucher_value) STORED,
+
+    note           TEXT,
+    created_at     TEXT DEFAULT (datetime('now')),     -- UTC
+    updated_at     TEXT DEFAULT (datetime('now'))      -- UTC
 );
 
 CREATE TABLE IF NOT EXISTS order_items (
-    id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id  INTEGER NOT NULL,
-    item_id   INTEGER NOT NULL,
-    item_name TEXT    NOT NULL,
-    qty       INTEGER NOT NULL,
-    price     INTEGER NOT NULL,
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id   INTEGER NOT NULL,
+    item_id    INTEGER NOT NULL,
+    item_name  TEXT    NOT NULL,
+    qty        INTEGER NOT NULL,
+    unit_price INTEGER NOT NULL,           -- riel, snapshot saat checkout
+    line_total INTEGER GENERATED ALWAYS AS (qty * unit_price) STORED,
     FOREIGN KEY (order_id) REFERENCES orders(id)
 );

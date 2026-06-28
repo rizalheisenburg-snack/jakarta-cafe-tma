@@ -5,18 +5,17 @@ import pathlib
 
 from aiohttp import web
 
-from checkout_flow import checkout, verify_init_data
+from checkout_flow import checkout, confirm_partial, verify_init_data
 from config import OWNER_ID
 from db import get_conn
 from state_machine import (
     get_order,
-    get_user_orders,  # noqa: F401 — dipakai di api_orders
+    get_user_orders,
+    mark_paid,
     transition,
-    validate_voucher,
 )
 
 WEBAPP_DIR = pathlib.Path(__file__).parent / "webapp"
-
 routes = web.RouteTableDef()
 
 
@@ -29,12 +28,10 @@ def _json(data, status=200):
 
 
 def _auth(request: web.Request) -> dict | None:
-    init_data = request.headers.get("X-Init-Data", "")
-    return verify_init_data(init_data)
+    return verify_init_data(request.headers.get("X-Init-Data", ""))
 
 
-# ── Menu ────────────────────────────────────────────────────────────────────
-
+# ── Menu ──────────────────────────────────────────────────────────────────────
 
 @routes.get("/api/menu")
 async def api_menu(request):
@@ -49,46 +46,41 @@ async def api_menu(request):
     return _json({"categories": by_cat})
 
 
-# ── Voucher check ────────────────────────────────────────────────────────────
-
-
-@routes.post("/api/voucher/check")
-async def api_voucher_check(request):
-    body = await request.json()
-    code = body.get("code", "")
-    subtotal = int(body.get("subtotal", 0))
-    result = validate_voucher(code, subtotal)
-    return _json(result)
-
-
-# ── Checkout ─────────────────────────────────────────────────────────────────
-
+# ── Checkout ──────────────────────────────────────────────────────────────────
 
 @routes.post("/api/checkout")
 async def api_checkout(request):
     user = _auth(request)
     if not user:
         return _json({"ok": False, "error": "Unauthorized"}, 401)
-
     body = await request.json()
-    items = body.get("items", [])
-    voucher = body.get("voucher_code") or None
-    note = body.get("note", "")
-
-    result = checkout(user, items, voucher, note)
+    result = checkout(
+        user=user,
+        items=body.get("items", []),
+        use_voucher=bool(body.get("use_voucher", False)),
+        note=body.get("note", ""),
+    )
     return _json(result, 200 if result["ok"] else 400)
 
 
-# ── Orders ───────────────────────────────────────────────────────────────────
+@routes.post("/api/checkout/confirm-partial")
+async def api_confirm_partial(request):
+    user = _auth(request)
+    if not user:
+        return _json({"ok": False, "error": "Unauthorized"}, 401)
+    body = await request.json()
+    result = confirm_partial(int(body.get("order_id", 0)), user["id"])
+    return _json(result, 200 if result["ok"] else 400)
 
+
+# ── Orders ────────────────────────────────────────────────────────────────────
 
 @routes.get("/api/orders")
 async def api_orders(request):
     user = _auth(request)
     if not user:
         return _json({"ok": False, "error": "Unauthorized"}, 401)
-    orders = get_user_orders(user["id"])
-    return _json({"ok": True, "orders": orders})
+    return _json({"ok": True, "orders": get_user_orders(user["id"])})
 
 
 @routes.get("/api/orders/{order_id}")
@@ -105,8 +97,17 @@ async def api_order_detail(request):
     return _json({"ok": True, "order": o})
 
 
-# ── Owner: update status ──────────────────────────────────────────────────────
+@routes.post("/api/orders/{order_id}/cancel")
+async def api_cancel_order(request):
+    user = _auth(request)
+    if not user:
+        return _json({"ok": False, "error": "Unauthorized"}, 401)
+    oid = int(request.match_info["order_id"])
+    result = transition(oid, "CANCELLED", actor="customer")
+    return _json(result, 200 if result["ok"] else 400)
 
+
+# ── Owner ─────────────────────────────────────────────────────────────────────
 
 @routes.post("/api/owner/orders/{order_id}/status")
 async def api_owner_status(request):
@@ -115,13 +116,22 @@ async def api_owner_status(request):
         return _json({"ok": False, "error": "Forbidden"}, 403)
     oid = int(request.match_info["order_id"])
     body = await request.json()
-    new_status = body.get("status", "")
-    result = transition(oid, new_status)
+    result = transition(oid, body.get("status", ""), actor="owner")
     return _json(result, 200 if result["ok"] else 400)
 
 
-# ── Static webapp ─────────────────────────────────────────────────────────────
+@routes.post("/api/owner/orders/{order_id}/pay")
+async def api_owner_pay(request):
+    user = _auth(request)
+    if not user or user["id"] != OWNER_ID:
+        return _json({"ok": False, "error": "Forbidden"}, 403)
+    oid = int(request.match_info["order_id"])
+    body = await request.json()
+    result = mark_paid(oid, body.get("currency", "RIEL"))
+    return _json(result, 200 if result["ok"] else 400)
 
+
+# ── Static ────────────────────────────────────────────────────────────────────
 
 @routes.get("/{tail:.*}")
 async def static_files(request):

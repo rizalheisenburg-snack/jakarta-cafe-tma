@@ -23,14 +23,10 @@
 <div id="screen-menu" class="screen">
   <div class="topbar">
     <span class="topbar-title">☕ Jakarta Cafe</span>
-    <button class="icon-btn" id="btn-orders-icon" title="Pesanan saya">📋</button>
+    <button class="icon-btn" id="btn-orders-icon">📋</button>
   </div>
-
   <div id="category-tabs" class="category-tabs"></div>
-
   <div id="menu-list" class="menu-list"></div>
-
-  <!-- Floating cart button -->
   <button id="btn-cart" class="cart-fab hidden">
     🛒 Keranjang · <span id="cart-count">0</span> item
     <span class="cart-total-fab" id="cart-total-fab"></span>
@@ -43,14 +39,10 @@
     <button class="icon-btn back-btn" data-target="screen-menu">← Kembali</button>
     <span class="topbar-title">Keranjang</span>
   </div>
-
   <div id="cart-items" class="cart-list"></div>
-
   <div class="cart-footer">
-    <div class="voucher-row">
-      <input id="voucher-input" type="text" placeholder="Kode voucher (opsional)" autocapitalize="characters" />
-      <button id="btn-apply-voucher" class="btn-sm">Pakai</button>
-    </div>
+
+    <button id="btn-toggle-voucher" class="btn-voucher">🎟 Pakai Voucher</button>
     <div id="voucher-msg" class="voucher-msg"></div>
 
     <div class="note-row">
@@ -58,14 +50,25 @@
     </div>
 
     <div class="price-summary">
-      <div class="price-row"><span>Subtotal</span><span id="sum-subtotal">Rp 0</span></div>
+      <div class="price-row"><span>Subtotal</span><span id="sum-subtotal">0₭</span></div>
       <div class="price-row discount-row hidden" id="discount-row">
-        <span>Diskon</span><span id="sum-discount" class="green">-Rp 0</span>
+        <span>Voucher</span><span id="sum-discount" class="green">-0₭</span>
       </div>
-      <div class="price-row total-row"><span>Total</span><span id="sum-total">Rp 0</span></div>
+      <div class="price-row total-row"><span>Total</span><span id="sum-total">0₭</span></div>
     </div>
 
     <button id="btn-checkout" class="btn-primary">Pesan Sekarang</button>
+  </div>
+</div>
+
+<!-- ── PARTIAL DIALOG ────────────────────────────────────────── -->
+<div id="screen-partial" class="screen" data-order-id="">
+  <div class="success-inner">
+    <div class="success-icon">⚠️</div>
+    <h2>Item Sebagian Habis</h2>
+    <p id="partial-body"></p>
+    <button id="btn-partial-confirm" class="btn-primary">Lanjut Tanpa Item Itu</button>
+    <button id="btn-partial-cancel" class="btn-secondary">Batalkan Order</button>
   </div>
 </div>
 
@@ -74,8 +77,8 @@
   <div class="success-inner">
     <div class="success-icon">✅</div>
     <h2>Pesanan Masuk!</h2>
-    <p>Order <strong id="success-order-id">#0</strong> sedang menunggu konfirmasi owner.</p>
-    <p class="success-total">Total: <strong id="success-total">Rp 0</strong></p>
+    <p>Order <strong id="success-order-id">#0</strong> sedang menunggu konfirmasi.</p>
+    <p class="success-total">Total: <strong id="success-total">0₭</strong></p>
     <button id="btn-back-menu" class="btn-primary">Pesan Lagi</button>
     <button id="btn-see-orders" class="btn-secondary">Lihat Pesanan Saya</button>
   </div>

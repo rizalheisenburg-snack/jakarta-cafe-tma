@@ -6,12 +6,11 @@ tg?.expand();
 const INIT_DATA = tg?.initData || "";
 
 /* ── State ────────────────────────────────────────────────────── */
-const cart = {};          // { item_id: { item, qty } }
-let menu = {};            // { category: [item, ...] }
-let voucher = null;       // { code, discount, description } | null
-let currentScreen = null;
+const cart = {};       // { item_id: { item, qty } }
+let menu = {};         // { category: [item, ...] }
+let useVoucher = false;
 
-/* ── API ──────────────────────────────────────────────────────── */
+/* ── Helpers ──────────────────────────────────────────────────── */
 async function api(path, opts = {}) {
   const res = await fetch(path, {
     headers: { "Content-Type": "application/json", "X-Init-Data": INIT_DATA },
@@ -20,22 +19,22 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
-/* ── Screen router ────────────────────────────────────────────── */
+const riel = n => `${Number(n).toLocaleString("km-KH")}₭`;
+
 function show(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
-  currentScreen = id;
 }
-
-/* ── Format Rupiah ────────────────────────────────────────────── */
-const rp = n => "Rp " + Number(n).toLocaleString("id-ID");
 
 /* ── Menu screen ──────────────────────────────────────────────── */
 function renderMenu() {
   const tabs = document.getElementById("category-tabs");
   const list = document.getElementById("menu-list");
   const cats = Object.keys(menu);
-  if (!cats.length) { list.innerHTML = "<p style='color:var(--hint);padding:32px;text-align:center'>Menu kosong</p>"; return; }
+  if (!cats.length) {
+    list.innerHTML = "<p class='empty-hint'>Menu kosong</p>";
+    return;
+  }
 
   tabs.innerHTML = cats.map((c, i) =>
     `<button class="cat-tab${i === 0 ? " active" : ""}" data-cat="${c}">${c}</button>`
@@ -43,18 +42,19 @@ function renderMenu() {
 
   function renderCat(activeCat) {
     list.innerHTML = "";
-    tabs.querySelectorAll(".cat-tab").forEach(t => t.classList.toggle("active", t.dataset.cat === activeCat));
+    tabs.querySelectorAll(".cat-tab").forEach(t =>
+      t.classList.toggle("active", t.dataset.cat === activeCat)
+    );
     (menu[activeCat] || []).forEach(item => {
       const qty = cart[item.id]?.qty || 0;
       const card = document.createElement("div");
       card.className = "menu-card";
-      card.dataset.id = item.id;
       card.innerHTML = `
         <div class="menu-emoji">${item.emoji || "☕"}</div>
         <div class="menu-info">
           <div class="menu-name">${item.name}</div>
           ${item.description ? `<div class="menu-desc">${item.description}</div>` : ""}
-          <div class="menu-price">${rp(item.price)}</div>
+          <div class="menu-price">${riel(item.price)}</div>
         </div>
         <div class="qty-control">
           <button class="qty-btn minus" data-id="${item.id}">−</button>
@@ -77,15 +77,13 @@ function renderMenu() {
     const minus = e.target.closest(".qty-btn.minus");
     if (!plus && !minus) return;
     const id = parseInt((plus || minus).dataset.id);
-    const allItems = Object.values(menu).flat();
-    const item = allItems.find(i => i.id === id);
+    const item = Object.values(menu).flat().find(i => i.id === id);
     if (!item) return;
-
     if (plus) {
       cart[id] = cart[id] || { item, qty: 0 };
       cart[id].qty++;
     } else {
-      if (!cart[id] || cart[id].qty === 0) return;
+      if (!cart[id]?.qty) return;
       cart[id].qty--;
       if (cart[id].qty === 0) delete cart[id];
     }
@@ -94,21 +92,17 @@ function renderMenu() {
   });
 }
 
-function updateCartFab() {
-  const fab = document.getElementById("btn-cart");
-  const total = cartTotal();
-  const count = Object.values(cart).reduce((s, v) => s + v.qty, 0);
-  if (count === 0) { fab.classList.add("hidden"); return; }
-  fab.classList.remove("hidden");
-  document.getElementById("cart-count").textContent = count;
-  document.getElementById("cart-total-fab").textContent = rp(total);
-}
-
 function cartSubtotal() {
   return Object.values(cart).reduce((s, { item, qty }) => s + item.price * qty, 0);
 }
-function cartTotal() {
-  return Math.max(0, cartSubtotal() - (voucher?.discount || 0));
+
+function updateCartFab() {
+  const fab = document.getElementById("btn-cart");
+  const count = Object.values(cart).reduce((s, v) => s + v.qty, 0);
+  if (!count) { fab.classList.add("hidden"); return; }
+  fab.classList.remove("hidden");
+  document.getElementById("cart-count").textContent = count;
+  document.getElementById("cart-total-fab").textContent = riel(cartSubtotal());
 }
 
 /* ── Cart screen ──────────────────────────────────────────────── */
@@ -117,14 +111,14 @@ function renderCart() {
   const entries = Object.values(cart);
 
   if (!entries.length) {
-    container.innerHTML = `<div class="empty-cart">🛒 Keranjang kosong<br><small>Tambah item dari menu dulu</small></div>`;
+    container.innerHTML = `<div class="empty-cart">🛒 Keranjang kosong</div>`;
   } else {
     container.innerHTML = entries.map(({ item, qty }) => `
       <div class="cart-item">
-        <span style="font-size:28px">${item.emoji || "☕"}</span>
+        <span class="cart-emoji">${item.emoji || "☕"}</span>
         <div class="cart-item-info">
           <div class="cart-item-name">${item.name}</div>
-          <div class="cart-item-price">${rp(item.price)} × ${qty} = <strong>${rp(item.price * qty)}</strong></div>
+          <div class="cart-item-price">${riel(item.price)} × ${qty} = <strong>${riel(item.price * qty)}</strong></div>
         </div>
         <div class="qty-control">
           <button class="qty-btn minus" data-id="${item.id}">−</button>
@@ -143,52 +137,41 @@ function renderCart() {
         cart[id].qty--;
         if (cart[id].qty === 0) delete cart[id];
       }
-      voucher = null; // reset voucher on cart change
       renderCart();
       updateCartFab();
     }, { once: true });
   }
 
   updatePriceSummary();
-
   document.getElementById("btn-checkout").disabled = !entries.length;
 }
 
 function updatePriceSummary() {
   const sub = cartSubtotal();
-  const disc = voucher?.discount || 0;
-  const total = cartTotal();
+  const disc = useVoucher ? 10_000 : 0;
+  const total = Math.max(0, sub - disc);
 
-  document.getElementById("sum-subtotal").textContent = rp(sub);
-  document.getElementById("sum-discount").textContent = "-" + rp(disc);
-  document.getElementById("sum-total").textContent = rp(total);
-
-  const discRow = document.getElementById("discount-row");
-  discRow.classList.toggle("hidden", disc === 0);
+  document.getElementById("sum-subtotal").textContent = riel(sub);
+  document.getElementById("sum-discount").textContent = `-${riel(disc)}`;
+  document.getElementById("sum-total").textContent = riel(total);
+  document.getElementById("discount-row").classList.toggle("hidden", !useVoucher);
 }
 
-/* ── Voucher ──────────────────────────────────────────────────── */
-document.getElementById("btn-apply-voucher").addEventListener("click", async () => {
-  const code = document.getElementById("voucher-input").value.trim();
-  const msgEl = document.getElementById("voucher-msg");
-  if (!code) return;
-
+/* ── Voucher toggle ───────────────────────────────────────────── */
+document.getElementById("btn-toggle-voucher").addEventListener("click", () => {
   const sub = cartSubtotal();
-  const result = await api("/api/voucher/check", {
-    method: "POST",
-    body: JSON.stringify({ code, subtotal: sub }),
-  });
-
-  msgEl.className = "voucher-msg";
-  if (result.ok) {
-    voucher = result;
-    msgEl.classList.add("ok");
-    msgEl.textContent = `✅ Voucher berlaku! Hemat ${result.description}`;
-  } else {
-    voucher = null;
-    msgEl.classList.add("err");
-    msgEl.textContent = "❌ " + result.error;
+  if (!useVoucher && sub < 10_000 && sub > 0) {
+    const topup = 10_000 - sub;
+    const msg = document.getElementById("voucher-msg");
+    msg.className = "voucher-msg err";
+    msg.textContent = `Belanja kurang ${riel(topup)} lagi untuk pakai voucher, atau lanjut bayar penuh.`;
+    return;
   }
+  useVoucher = !useVoucher;
+  const btn = document.getElementById("btn-toggle-voucher");
+  btn.textContent = useVoucher ? "✅ Voucher Dipakai" : "🎟 Pakai Voucher";
+  btn.classList.toggle("active", useVoucher);
+  document.getElementById("voucher-msg").textContent = "";
   updatePriceSummary();
 });
 
@@ -203,28 +186,74 @@ document.getElementById("btn-checkout").addEventListener("click", async () => {
 
   const result = await api("/api/checkout", {
     method: "POST",
-    body: JSON.stringify({ items, voucher_code: voucher?.code || null, note }),
+    body: JSON.stringify({ items, use_voucher: useVoucher, note }),
   });
 
   btn.disabled = false;
   btn.textContent = "Pesan Sekarang";
 
   if (result.ok) {
-    // Clear cart
-    Object.keys(cart).forEach(k => delete cart[k]);
-    voucher = null;
-    document.getElementById("voucher-input").value = "";
-    document.getElementById("note-input").value = "";
-    updateCartFab();
-
-    document.getElementById("success-order-id").textContent = "#" + result.order_id;
-    document.getElementById("success-total").textContent = rp(result.total);
-    show("screen-success");
-    tg?.HapticFeedback?.notificationOccurred("success");
+    clearCart();
+    showSuccess(result);
+  } else if (result.error === "TOPUP_REQUIRED") {
+    const msg = document.getElementById("voucher-msg");
+    msg.className = "voucher-msg err";
+    msg.textContent = result.message;
+    useVoucher = false;
+    document.getElementById("btn-toggle-voucher").textContent = "🎟 Pakai Voucher";
+    updatePriceSummary();
+  } else if (result.error === "PARTIAL") {
+    showPartialDialog(result);
   } else {
     tg?.showAlert?.(result.error || "Checkout gagal, coba lagi.");
   }
 });
+
+function clearCart() {
+  Object.keys(cart).forEach(k => delete cart[k]);
+  useVoucher = false;
+  document.getElementById("note-input").value = "";
+  document.getElementById("voucher-msg").textContent = "";
+  document.getElementById("btn-toggle-voucher").textContent = "🎟 Pakai Voucher";
+  document.getElementById("btn-toggle-voucher").classList.remove("active");
+  updateCartFab();
+}
+
+/* ── Partial dialog ───────────────────────────────────────────── */
+function showPartialDialog(result) {
+  const unavail = result.unavailable_items.map(i => i.item_name).join(", ");
+  const body = document.getElementById("partial-body");
+  body.textContent = `Item berikut habis: ${unavail}. Lanjut order tanpa item ini?`;
+  document.getElementById("screen-partial").dataset.orderId = result.order_id;
+  show("screen-partial");
+}
+
+document.getElementById("btn-partial-confirm").addEventListener("click", async () => {
+  const oid = parseInt(document.getElementById("screen-partial").dataset.orderId);
+  const result = await api("/api/checkout/confirm-partial", {
+    method: "POST",
+    body: JSON.stringify({ order_id: oid }),
+  });
+  if (result.ok) {
+    showSuccess({ order_id: oid, total: 0 });
+  } else {
+    tg?.showAlert?.(result.error);
+  }
+});
+
+document.getElementById("btn-partial-cancel").addEventListener("click", async () => {
+  const oid = parseInt(document.getElementById("screen-partial").dataset.orderId);
+  await api(`/api/orders/${oid}/cancel`, { method: "POST" });
+  show("screen-cart");
+});
+
+/* ── Success screen ───────────────────────────────────────────── */
+function showSuccess(result) {
+  document.getElementById("success-order-id").textContent = "#" + result.order_id;
+  document.getElementById("success-total").textContent = result.total > 0 ? riel(result.total) : "GRATIS 🎉";
+  show("screen-success");
+  tg?.HapticFeedback?.notificationOccurred("success");
+}
 
 /* ── Orders list ──────────────────────────────────────────────── */
 async function loadOrders() {
@@ -235,20 +264,24 @@ async function loadOrders() {
     container.innerHTML = `<div class="empty-orders">📋 Belum ada pesanan</div>`;
     return;
   }
-  container.innerHTML = result.orders.map(o => `
-    <div class="order-card" data-id="${o.id}">
-      <div class="order-card-header">
-        <span class="order-id">Order #${o.id}</span>
-        <span class="order-status-badge ${o.status}">${o.status_label}</span>
-      </div>
-      <div class="order-card-meta">${o.created_at}</div>
-      <div class="order-card-total">${rp(o.total)}</div>
-    </div>`).join("");
+  container.innerHTML = result.orders.map(o => {
+    const payBadge = o.payment_status === "PAID"
+      ? `<span class="pay-badge paid">Lunas</span>`
+      : `<span class="pay-badge unpaid">Belum Bayar</span>`;
+    return `
+      <div class="order-card" data-id="${o.id}">
+        <div class="order-card-header">
+          <span class="order-id">Order #${o.id}</span>
+          <span class="order-status-badge ${o.status.toLowerCase()}">${o.status_label}</span>
+        </div>
+        <div class="order-card-meta">${o.created_at} ${payBadge}</div>
+        <div class="order-card-total">${riel(o.total)}</div>
+      </div>`;
+  }).join("");
 
   container.addEventListener("click", e => {
     const card = e.target.closest(".order-card");
-    if (!card) return;
-    loadOrderDetail(parseInt(card.dataset.id));
+    if (card) loadOrderDetail(parseInt(card.dataset.id));
   });
 }
 
@@ -259,33 +292,40 @@ async function loadOrderDetail(id) {
   body.innerHTML = `<div style="text-align:center;padding:32px"><div class="spinner" style="margin:0 auto"></div></div>`;
 
   const result = await api(`/api/orders/${id}`);
-  if (!result.ok) { body.innerHTML = `<p style="padding:20px;color:var(--red)">Gagal memuat order</p>`; return; }
+  if (!result.ok) { body.innerHTML = `<p style="padding:20px;color:var(--red)">Gagal memuat</p>`; return; }
   const o = result.order;
 
-  const itemsHtml = o.items.map(i => `
-    <div class="detail-item-row">
+  const itemsHtml = o.items.map(i =>
+    `<div class="detail-item-row">
       <span>${i.item_name} × ${i.qty}</span>
-      <span>${rp(i.price * i.qty)}</span>
-    </div>`).join("");
+      <span>${riel(i.unit_price * i.qty)}</span>
+    </div>`
+  ).join("");
 
-  const discountHtml = o.discount ? `<div class="detail-row"><span>Diskon</span><span class="green">-${rp(o.discount)}</span></div>` : "";
+  const discHtml = o.voucher_used
+    ? `<div class="detail-row"><span>Voucher</span><span class="green">-${riel(o.voucher_value)}</span></div>`
+    : "";
+
+  const payHtml = o.payment_status === "PAID"
+    ? `<div class="detail-row green"><span>Pembayaran</span><span>Lunas (${o.paid_currency || ""})</span></div>`
+    : `<div class="detail-row" style="color:var(--red)"><span>Pembayaran</span><span>Belum Bayar</span></div>`;
 
   body.innerHTML = `
     <div class="detail-status-big">${o.status_label}</div>
     <div class="detail-items">
-      <strong style="font-size:13px;color:var(--hint)">ITEM</strong>
+      <strong class="section-label">ITEM</strong>
       ${itemsHtml}
     </div>
     <div class="detail-summary">
-      <div class="detail-row"><span>Subtotal</span><span>${rp(o.subtotal)}</span></div>
-      ${discountHtml}
-      <div class="detail-row detail-total"><span>Total</span><span>${rp(o.total)}</span></div>
+      <div class="detail-row"><span>Subtotal</span><span>${riel(o.subtotal)}</span></div>
+      ${discHtml}
+      <div class="detail-row detail-total"><span>Total</span><span>${riel(o.total)}</span></div>
+      ${payHtml}
       ${o.note ? `<div class="detail-note">📝 ${o.note}</div>` : ""}
-      ${o.voucher_code ? `<div class="detail-note">🎟 Voucher: ${o.voucher_code}</div>` : ""}
     </div>`;
 }
 
-/* ── Navigation wiring ────────────────────────────────────────── */
+/* ── Navigation ───────────────────────────────────────────────── */
 document.getElementById("btn-cart").addEventListener("click", () => {
   renderCart();
   show("screen-cart");
@@ -304,9 +344,8 @@ document.getElementById("btn-see-orders").addEventListener("click", () => {
 
 document.querySelectorAll(".back-btn[data-target]").forEach(btn => {
   btn.addEventListener("click", () => {
-    const target = btn.dataset.target;
-    if (target === "screen-orders") { loadOrders(); }
-    show(target);
+    if (btn.dataset.target === "screen-orders") loadOrders();
+    show(btn.dataset.target);
   });
 });
 
@@ -318,8 +357,8 @@ document.querySelectorAll(".back-btn[data-target]").forEach(btn => {
     menu = data.categories || {};
     show("screen-menu");
     renderMenu();
-  } catch (e) {
-    document.querySelector(".loading-text").textContent = "Gagal memuat menu 😢";
+  } catch {
+    document.querySelector(".loading-text").textContent = "Gagal memuat menu";
     document.querySelector(".spinner").style.display = "none";
   }
 })();
