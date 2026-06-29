@@ -290,9 +290,15 @@ async function loadOrders() {
 
 async function loadOrderDetail(id) {
   document.getElementById("detail-title").textContent = "Order #" + id;
+  document.getElementById("order-detail-body").innerHTML = "";
   show("screen-order-detail");
+  startPolling(() => _fetchOrderDetail(id));
+}
+
+async function _fetchOrderDetail(id) {
   const body = document.getElementById("order-detail-body");
-  body.innerHTML = `<div style="text-align:center;padding:32px"><div class="spinner" style="margin:0 auto"></div></div>`;
+  if (!body.innerHTML.trim())
+    body.innerHTML = `<div style="text-align:center;padding:32px"><div class="spinner" style="margin:0 auto"></div></div>`;
 
   const result = await api(`/api/orders/${id}`);
   if (!result.ok) { body.innerHTML = `<p style="padding:20px;color:var(--red)">Gagal memuat</p>`; return; }
@@ -328,27 +334,49 @@ async function loadOrderDetail(id) {
     </div>`;
 }
 
+/* ── Polling ──────────────────────────────────────────────────── */
+let _pollTimer = null;
+
+function startPolling(fn, ms = 5000) {
+  stopPolling();
+  fn(); // langsung fetch sekali
+  _pollTimer = setInterval(fn, ms);
+}
+
+function stopPolling() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+}
+
 /* ── Navigation ───────────────────────────────────────────────── */
 document.getElementById("btn-cart").addEventListener("click", () => {
+  stopPolling();
   renderCart();
   show("screen-cart");
 });
 
 document.getElementById("btn-orders-icon").addEventListener("click", () => {
-  loadOrders();
   show("screen-orders");
+  startPolling(loadOrders);
 });
 
-document.getElementById("btn-back-menu").addEventListener("click", () => show("screen-menu"));
+document.getElementById("btn-back-menu").addEventListener("click", () => {
+  stopPolling();
+  show("screen-menu");
+});
 document.getElementById("btn-see-orders").addEventListener("click", () => {
-  loadOrders();
   show("screen-orders");
+  startPolling(loadOrders);
 });
 
 document.querySelectorAll(".back-btn[data-target]").forEach(btn => {
   btn.addEventListener("click", () => {
-    if (btn.dataset.target === "screen-orders") loadOrders();
-    show(btn.dataset.target);
+    stopPolling();
+    if (btn.dataset.target === "screen-orders") {
+      show("screen-orders");
+      startPolling(loadOrders);
+    } else {
+      show(btn.dataset.target);
+    }
   });
 });
 
