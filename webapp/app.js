@@ -49,8 +49,11 @@ function renderMenu() {
       const qty = cart[item.id]?.qty || 0;
       const card = document.createElement("div");
       card.className = "menu-card";
+      const thumb = item.image_url
+        ? `<img class="menu-thumb" src="${item.image_url}" alt="" loading="lazy" onerror="this.style.display='none'">`
+        : `<div class="menu-emoji">${item.emoji || "🍽️"}</div>`;
       card.innerHTML = `
-        <div class="menu-emoji">${item.emoji || "☕"}</div>
+        ${thumb}
         <div class="menu-info">
           <div class="menu-name">${item.name}</div>
           ${item.description ? `<div class="menu-desc">${item.description}</div>` : ""}

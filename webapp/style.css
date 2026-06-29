@@ -124,6 +124,12 @@ html, body {
   box-shadow: var(--shadow);
 }
 .menu-emoji { font-size: 36px; flex-shrink: 0; }
+.menu-thumb {
+  width: 72px; height: 72px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
 .menu-info { flex: 1; min-width: 0; }
 .menu-name { font-weight: 700; font-size: 15px; }
 .menu-desc { color: var(--hint); font-size: 13px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

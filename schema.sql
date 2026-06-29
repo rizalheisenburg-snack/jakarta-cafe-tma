@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS menu_items (
     price       INTEGER NOT NULL,          -- riel
     category    TEXT    NOT NULL,
     emoji       TEXT    DEFAULT '☕',
+    image_url   TEXT,
     available   INTEGER DEFAULT 1          -- 1=ada, 0=habis
 );
 
