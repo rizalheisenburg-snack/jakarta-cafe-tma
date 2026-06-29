@@ -259,15 +259,8 @@ function showSuccess(result) {
 }
 
 /* ── Orders list ──────────────────────────────────────────────── */
-async function loadOrders() {
-  const container = document.getElementById("orders-list");
-  container.innerHTML = `<div class="empty-orders"><div class="spinner" style="margin:0 auto"></div></div>`;
-  const result = await api("/api/orders");
-  if (!result.ok || !result.orders?.length) {
-    container.innerHTML = `<div class="empty-orders">📋 Belum ada pesanan</div>`;
-    return;
-  }
-  container.innerHTML = result.orders.map(o => {
+function _ordersHtml(orders) {
+  return orders.map(o => {
     const payBadge = o.payment_status === "PAID"
       ? `<span class="pay-badge paid">Lunas</span>`
       : `<span class="pay-badge unpaid">Belum Bayar</span>`;
@@ -281,12 +274,27 @@ async function loadOrders() {
         <div class="order-card-total">${riel(o.total)}</div>
       </div>`;
   }).join("");
-
-  container.addEventListener("click", e => {
-    const card = e.target.closest(".order-card");
-    if (card) loadOrderDetail(parseInt(card.dataset.id));
-  });
 }
+
+async function loadOrders() {
+  const container = document.getElementById("orders-list");
+  // Spinner hanya kalau container masih kosong (first load)
+  if (!container.innerHTML.trim())
+    container.innerHTML = `<div class="empty-orders"><div class="spinner" style="margin:0 auto"></div></div>`;
+
+  const result = await api("/api/orders");
+  if (!result.ok || !result.orders?.length) {
+    container.innerHTML = `<div class="empty-orders">📋 Belum ada pesanan</div>`;
+    return;
+  }
+  container.innerHTML = _ordersHtml(result.orders);
+}
+
+// Listener click cukup sekali, pakai event delegation
+document.getElementById("orders-list").addEventListener("click", e => {
+  const card = e.target.closest(".order-card");
+  if (card) loadOrderDetail(parseInt(card.dataset.id));
+});
 
 async function loadOrderDetail(id) {
   document.getElementById("detail-title").textContent = "Order #" + id;
@@ -355,6 +363,7 @@ document.getElementById("btn-cart").addEventListener("click", () => {
 });
 
 document.getElementById("btn-orders-icon").addEventListener("click", () => {
+  document.getElementById("orders-list").innerHTML = "";
   show("screen-orders");
   startPolling(loadOrders);
 });
@@ -364,6 +373,7 @@ document.getElementById("btn-back-menu").addEventListener("click", () => {
   show("screen-menu");
 });
 document.getElementById("btn-see-orders").addEventListener("click", () => {
+  document.getElementById("orders-list").innerHTML = "";
   show("screen-orders");
   startPolling(loadOrders);
 });
@@ -372,6 +382,7 @@ document.querySelectorAll(".back-btn[data-target]").forEach(btn => {
   btn.addEventListener("click", () => {
     stopPolling();
     if (btn.dataset.target === "screen-orders") {
+      document.getElementById("orders-list").innerHTML = "";
       show("screen-orders");
       startPolling(loadOrders);
     } else {
