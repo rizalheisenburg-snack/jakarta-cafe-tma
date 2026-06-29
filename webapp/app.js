@@ -207,11 +207,7 @@ async function doCheckout(payMethod) {
     showSuccess(result);
   } else if (result.error === "TOPUP_REQUIRED") {
     show("screen-cart");
-    const msg = document.getElementById("voucher-msg");
-    msg.className = "voucher-msg err";
-    msg.textContent = result.message;
     useVoucher = false;
-    document.getElementById("btn-toggle-voucher").textContent = "🎟 Pakai Voucher";
     updatePriceSummary();
   } else if (result.error === "PARTIAL") {
     showPartialDialog(result);
@@ -245,9 +241,13 @@ function clearCart() {
   Object.keys(cart).forEach(k => delete cart[k]);
   useVoucher = false;
   document.getElementById("note-input").value = "";
-  document.getElementById("voucher-msg").textContent = "";
-  document.getElementById("btn-toggle-voucher").textContent = "🎟 Pakai Voucher";
-  document.getElementById("btn-toggle-voucher").classList.remove("active");
+  document.getElementById("addr-custom").value = "";
+  const firstChip = document.querySelector(".addr-chip");
+  if (firstChip) {
+    document.querySelectorAll(".addr-chip").forEach(c => c.classList.remove("active"));
+    firstChip.classList.add("active");
+    selectedAddr = firstChip.dataset.addr;
+  }
   updateCartFab();
 }
 
