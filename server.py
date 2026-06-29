@@ -64,10 +64,36 @@ async def api_checkout(request):
             use_voucher=bool(body.get("use_voucher", False)),
             note=body.get("note", ""),
         )
+        # Kirim notif ke owner kalau order masuk (ok atau PARTIAL)
+        if result.get("ok") or result.get("error") == "PARTIAL":
+            await _notify_owner_new_order(request, result.get("order_id"))
         return _json(result, 200 if result["ok"] else 400)
     except Exception as e:
         log.exception("checkout error")
         return _json({"ok": False, "error": f"Server error: {e}"}, 500)
+
+
+async def _notify_owner_new_order(request: web.Request, order_id: int | None):
+    if not order_id:
+        return
+    bot = request.app["bot"]
+    if not bot:
+        return
+    try:
+        from owner_console import _order_keyboard, _order_text
+        from state_machine import get_order
+        o = get_order(order_id)
+        if not o:
+            return
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        await bot.send_message(
+            chat_id=OWNER_ID,
+            text=f"🔔 *Order baru masuk!*\n\n{_order_text(o)}",
+            parse_mode="Markdown",
+            reply_markup=_order_keyboard(o["id"], o["status"], o["payment_status"]),
+        )
+    except Exception:
+        log.exception("gagal kirim notif owner")
 
 
 @routes.post("/api/checkout/confirm-partial")
@@ -149,7 +175,8 @@ async def static_files(request):
     return web.FileResponse(path)
 
 
-def build_app() -> web.Application:
+def build_app(bot=None) -> web.Application:
     app = web.Application()
+    app["bot"] = bot
     app.add_routes(routes)
     return app

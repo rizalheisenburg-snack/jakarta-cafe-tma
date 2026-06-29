@@ -1,6 +1,9 @@
 """Owner bot — python-telegram-bot. Manage order, stok, omzet, push kartu."""
 from __future__ import annotations
+import logging
 from datetime import datetime
+
+log = logging.getLogger(__name__)
 
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -267,8 +270,8 @@ async def callback_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     text=f"*Order #{o['id']}* diperbarui\nStatus: {result['label']}",
                     parse_mode="Markdown",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                log.warning(f"Gagal kirim notif customer {o['user_id']}: {e}")
         else:
             await query.answer(result["error"], show_alert=True)
 

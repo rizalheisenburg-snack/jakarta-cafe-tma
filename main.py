@@ -22,17 +22,19 @@ async def main():
     init_db()
     seed()
 
+    # Bot di-init dulu supaya bot.send_message bisa dipakai HTTP server
+    tg_app = build_application()
+    await tg_app.initialize()
+
     # HTTP server (aiohttp)
-    http_app = build_app()
+    http_app = build_app(bot=tg_app.bot)
     runner = web.AppRunner(http_app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
     log.info(f"HTTP server jalan di http://0.0.0.0:{PORT}")
 
-    # Telegram bot (polling)
-    tg_app = build_application()
-    await tg_app.initialize()
+    # Telegram bot mulai polling
     await tg_app.start()
     await tg_app.updater.start_polling(drop_pending_updates=True)
     log.info("Telegram bot polling aktif")
