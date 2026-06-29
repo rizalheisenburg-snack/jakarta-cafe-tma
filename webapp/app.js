@@ -180,11 +180,37 @@ document.getElementById("btn-toggle-voucher").addEventListener("click", () => {
   updatePriceSummary();
 });
 
+/* ── Address chips ────────────────────────────────────────────── */
+let selectedAddr = "KD";
+
+document.querySelectorAll(".addr-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll(".addr-chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    selectedAddr = chip.dataset.addr;
+    document.getElementById("addr-custom").value = "";
+  });
+});
+
+document.getElementById("addr-custom").addEventListener("input", e => {
+  if (e.target.value.trim()) {
+    document.querySelectorAll(".addr-chip").forEach(c => c.classList.remove("active"));
+    selectedAddr = e.target.value.trim();
+  } else {
+    // kembali ke chip pertama kalau input dikosongkan
+    const first = document.querySelector(".addr-chip");
+    first.classList.add("active");
+    selectedAddr = first.dataset.addr;
+  }
+});
+
 /* ── Checkout ─────────────────────────────────────────────────── */
 async function doCheckout(payMethod) {
   const items = Object.values(cart).map(({ item, qty }) => ({ item_id: item.id, qty }));
   const noteBase = document.getElementById("note-input").value.trim();
-  const note = payMethod === "ABA" ? `[Transfer ABA] ${noteBase}`.trim() : noteBase;
+  const addr = document.getElementById("addr-custom").value.trim() || selectedAddr;
+  const noteWithAddr = `[${addr}] ${noteBase}`.trim();
+  const note = payMethod === "ABA" ? `[Transfer ABA] ${noteWithAddr}` : noteWithAddr;
 
   const result = await api("/api/checkout", {
     method: "POST",

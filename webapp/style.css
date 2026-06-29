@@ -270,6 +270,28 @@ html, body {
   font-size: 15px; font-weight: 600; cursor: pointer;
 }
 
+/* ── Address picker ───────────────────────────────────────────── */
+.address-section { margin-bottom: 12px; }
+.address-label { font-size: 13px; font-weight: 700; color: var(--hint); margin-bottom: 8px; }
+.address-chips {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
+}
+.addr-chip {
+  padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--hint); background: transparent; color: var(--text);
+  transition: all .15s;
+}
+.addr-chip.active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.addr-input {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  border: 1.5px solid var(--bg2); background: var(--bg2);
+  color: var(--text); font-size: 14px; outline: none;
+  transition: border-color .15s;
+}
+.addr-input:focus { border-color: var(--accent); }
+
 /* ── Payment method buttons ───────────────────────────────────── */
 .pay-method-row {
   display: flex; gap: 10px; margin-top: 14px;
